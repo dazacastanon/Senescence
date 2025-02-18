@@ -1,0 +1,505 @@
+---
+title: "Senescence project"
+author: "Amparo Daza"
+date: "2025-02-13"
+output: html_document
+---
+
+```{r include=FALSE}
+
+# Senescence analusis
+## Libraries
+library(dplyr)
+library(lme4)
+library(ggplot2)
+library(tidyr)
+
+## Set up directory
+setwd("/Users/amparodaza/Library/CloudStorage/OneDrive-UW-Madison/Doctorado/Senescence project")
+
+# Load files 
+data_10_11_23  <- read.csv("/Users/amparodaza/Library/CloudStorage/OneDrive-UW-Madison/Doctorado/Senescence project/RGB_Data/All_results/results_10_11_23_v1.csv")
+```
+
+```{r, echo = FALSE}
+
+# In this code the structure was checked, change columns to factors for the model and group by Genotype and Repetition
+# Check structure 
+str(data_10_11_23)
+
+# change columns to factor
+data_10_11_23$Genotype <- as.factor(data_10_11_23$Genotype)
+data_10_11_23$Rep <- as.factor(data_10_11_23$Rep)
+
+data_10_11_23_plotbase_all <- data_10_11_23 %>%
+  group_by(Genotype,Rep) %>%
+  summarise(avg_Red = mean(Red),
+            avg_Green = mean(Green),
+            avg_Blue = mean(Blue),
+            avg_BI = mean(BI),
+            avg_GLI = mean(GLI),
+            avg_NGRDI = mean(NGRDI),
+            avg_VARI=mean(VARI),
+            avg_BGI = mean(BGI),
+            avg_BI_2 = mean(BI_2),
+            avg_GLI_2 = mean(GLI_2),
+            avg_NGRDI_2 = mean(NGRDI_2),
+            avg_VARI_2=mean(VARI_2),
+            avg_BGI_2 = mean(BGI_2),
+            avg_BCC=mean(BCC),
+            avg_CIVE=mean(CIVE)
+            )
+
+```
+
+
+
+#### Fit the model for Plant Height 
+```{r}
+fit.CIVE <- lmer(avg_CIVE ~ (1|Genotype) + (1|Rep), data = data_10_11_23_plotbase_all) # Fit model for Plantheigh for exp1
+summary(fit.CIVE)
+
+```
+
+#### Calculate h2 for Plant Height
+
+```{r}
+
+# Calculate heritability for Plant Height, the values were extracted from the Model
+
+heritability_X = (2.146e-05/(2.146e-05+(9.373e-06/2)))
+```
+
+
+```{r, echo = FALSE}
+# Calculate heritability for just the two inner rows 
+# Heritability just 2 inner rows
+data_10_11_23_plotbase_internal <- data_10_11_23 %>%
+  filter(!(substr(PlotID_rowNumber, nchar(PlotID_rowNumber), nchar(PlotID_rowNumber)) %in% c("1","4")))
+
+str(data_10_11_23_plotbase_internal)
+
+#Heritabilities just internal
+
+data_10_11_23_internal_avg <- data_10_11_23_plotbase_internal %>%
+  group_by(Genotype,Rep) %>%
+  summarise(avg_Red = mean(Red),
+            avg_Green = mean(Green),
+            avg_Blue = mean(Blue),
+            avg_BI = mean(BI),
+            avg_GLI = mean(GLI),
+            avg_NGRDI = mean(NGRDI),
+            avg_VARI=mean(VARI),
+            avg_BGI = mean(BGI),
+            avg_BI_2 = mean(BI_2),
+            avg_GLI_2 = mean(GLI_2),
+            avg_NGRDI_2 = mean(NGRDI_2),
+            avg_VARI_2=mean(VARI_2),
+            avg_BGI_2 = mean(BGI_2),
+            avg_BCC=mean(BCC),
+            avg_CIVE=mean(CIVE)
+  )
+```
+
+#### Fit a new model with Genotype and Rep as random and calculate heritabilities for just the two inner rows for exp1
+```{r}
+fit.CIVE <- lmer(avg_CIVE ~ (1|Genotype) + (1|Rep), data = data_10_11_23_internal_avg) # Fit model for Plantheigh for exp1
+summary(fit.CIVE)
+
+#Calculate heritability for Plant Height
+heritability_X= (2.508e-05/(2.508e-05+(1.044e-05/2)))
+```
+
+#### Plot heritabilities for the results for RGB data (All vegetative indexes)
+```{r, echo = FALSE}
+
+######### Plots
+
+# 1. Plot 1 Heritabilities
+## Load heritabilities 4 row plot:
+
+### set the directory for the RGB data
+setwd("/Users/amparodaza/Library/CloudStorage/OneDrive-UW-Madison/Doctorado/Senescence project/RGB_Data/All_results")
+
+# Load files 
+Plot1_h2_full<-read.csv("heritabilities_all.csv")
+
+#Remove column 2
+GLI <- Plot1_h2_full[,3]
+NGRDI <- Plot1_h2_full[,4]
+VARI <- Plot1_h2_full[,5]
+BCC <- Plot1_h2_full[,6]
+VICE <- Plot1_h2_full[,7]
+dates <- as.Date(c("2023-8-10", "2023-8-16", "2023-8-23", "2023-8-30", "2023-9-05",
+                   "2023-9-13", "2023-9-20", "2023-9-29", "2023-10-4", "2023-10-11"))
+
+# Create a data frame
+Plot1_h2 <- data.frame(dates,GLI, NGRDI, VARI, BCC,VICE)
+
+# Convert data to long format for easier plotting
+
+df_long <- gather(Plot1_h2, key = "VegetativeIndex", value = "Value", -dates)
+
+# Plotting using ggplot2
+ggplot(data = df_long, aes(x = dates, y = Value, color = VegetativeIndex)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Value", title = "Vegetative Index over Time") +
+  theme_minimal() +
+  scale_color_discrete(name = "Vegetative Index")+
+  labs(x = "Date of flight", y = "Vegetative Index heritability", title = "Heritability over Time")+
+  theme(axis.text = element_text(size = 12))+
+  theme(axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14),
+        plot.title = element_text(hjust = 0.5))
+```
+
+#### Comparison of heritabilities for each of the vegetative indices for the 4 rows vs the two inner rows
+##### NGDRI Index
+
+```{r, echo = FALSE}
+# 2. Comparisson of h2
+# NGRDI
+## Sample data (replace with your actual data)
+time <- as.Date(c("2023-8-10", "2023-8-16", "2023-8-23", "2023-8-30", "2023-9-05",
+                  "2023-9-13", "2023-9-20", "2023-9-29", "2023-10-4", "2023-10-11"))
+method <- rep(c("4 Rows", "2 Inner rows"), each = 10)
+value <- c(0.8,0.84,0.91,0.82,0.9,0.88,0.86,0.83,0.6
+           ,0.41,0.75,0.83,0.91,0.81,0.9,0.89,0.86,0.82,0.69,0.32)
+             # Replace with your actual data
+
+# Create a data frame
+df <- data.frame(time, method, value)
+
+
+ggplot(df, aes(x = time, y = value, fill = method)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.8) +
+  labs(x = "Date of flight", y = "Vegetative Index heritability", title = "NGRDI", 
+       subtitle = "4 vs 2 Inner rows") +
+  scale_fill_manual(values = c("#FF9999", "#66B2FF"), name = "Method") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), axis.line = element_line(colour = "black"),
+        text = element_text(size = 12, family = "Arial"),
+        plot.title = element_text(size = 20, hjust = 0.5, face = "bold.italic"),
+        plot.subtitle = element_text(size = 16, hjust = 0.5, face = "italic"),
+        plot.caption = element_text(size = 10, hjust = 1),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(axis.text.x = element_text(size = 10)) +
+  theme(plot.margin = unit(c(1, 4, 1, 1), "cm"))
+```
+
+##### BCC Index
+
+```{r, echo = FALSE}
+# BCC
+## Sample data (replace with your actual data)
+time <- as.Date(c("2023-8-10", "2023-8-16", "2023-8-23", "2023-8-30", "2023-9-05",
+                  "2023-9-13", "2023-9-20", "2023-9-29", "2023-10-4", "2023-10-11"))
+method <- rep(c("4 Rows", "2 Inner rows"), each = 10)
+value <- c(0.7,0.79,0.87,0.83,0.65,0.78,0.72,0.9,
+           0.84,0.49,0.67,0.77,0.83,0.8,0.6,0.76,0.7,0.87,0.79,0.63)
+# Replace with your actual data
+
+# Create a data frame
+df <- data.frame(time, method, value)
+
+
+ggplot(df, aes(x = time, y = value, fill = method)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.8) +
+  labs(x = "Date of flight", y = "Vegetative Index heritability", title = "BCC", 
+       subtitle = "4 vs 2 Inner rows") +
+  scale_fill_manual(values = c("#FF9999", "#66B2FF"), name = "Method") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), axis.line = element_line(colour = "black"),
+        text = element_text(size = 12, family = "Arial"),
+        plot.title = element_text(size = 20, hjust = 0.5, face = "bold.italic"),
+        plot.subtitle = element_text(size = 16, hjust = 0.5, face = "italic"),
+        plot.caption = element_text(size = 10, hjust = 1),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(axis.text.x = element_text(size = 10)) +
+  theme(plot.margin = unit(c(1, 4, 1, 1), "cm"))
+```
+
+##### CIVE Index
+```{r, echo = FALSE}
+#CIVE
+
+time <- as.Date(c("2023-8-10", "2023-8-16", "2023-8-23", "2023-8-30", "2023-9-05",
+                  "2023-9-13", "2023-9-20", "2023-9-29", "2023-10-4", "2023-10-11"))
+method <- rep(c("4 Rows", "2 Inner rows"), each = 10)
+value <- c(0.84,0.86,0.87,0.83,0.71,0.76,0.73,0.82,0.84,0.82,
+           0.8,0.85,0.83,0.8,0.69,0.77,0.7,0.81,0.81,0.83)
+# Replace with your actual data
+
+# Create a data frame
+df <- data.frame(time, method, value)
+
+
+ggplot(df, aes(x = time, y = value, fill = method)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.8) +
+  labs(x = "Date of flight", y = "Vegetative Index heritability", title = "CIVE", 
+       subtitle = "4 vs 2 Inner rows") +
+  scale_fill_manual(values = c("#FF9999", "#66B2FF"), name = "Method") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(), axis.line = element_line(colour = "black"),
+        text = element_text(size = 12, family = "Arial"),
+        plot.title = element_text(size = 20, hjust = 0.5, face = "bold.italic"),
+        plot.subtitle = element_text(size = 16, hjust = 0.5, face = "italic"),
+        plot.caption = element_text(size = 10, hjust = 1),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(axis.text.x = element_text(size = 10)) +
+  theme(plot.margin = unit(c(1, 4, 1, 1), "cm"))
+```
+
+##### Analysis of the Stay green vs VI
+
+```{r, echo = FALSE}
+
+################## Stay green vs VI
+
+setwd("/Users/amparodaza/Library/CloudStorage/OneDrive-UW-Madison/Doctorado/Senescence project/RGB_Data/All_results")
+
+# Load files 
+Staygreen <- read.csv("staygreen_by_Index.csv")
+Staygreen[8,4] <- NA
+str(Staygreen)
+Staygreen$NGRDI <- as.numeric(Staygreen$NGRDI)
+```
+
+```{r, echo = FALSE}
+# Create scatterplot with trendline and R-squared
+model <- lm(NGRDI ~ Green_PCT, data = Staygreen)
+rsquared <- summary(model)$r.squared
+
+ggplot(Staygreen, aes(x = BCC, y = Green_PCT)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(x = "Vegetation Index Value", y = "Staygreen score", 
+       title = "BCC vs Staygreen",
+       subtitle = paste("r = ","0.43")) +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+```{r, echo = FALSE}
+###########
+# NGRDI curves
+
+# Load files 
+geno_summary2 <- read.csv("/Users/amparodaza/Library/CloudStorage/OneDrive-UW-Madison/Doctorado/Senescence project/RGB_Data/All_results/NGRVI_geno_summary2.csv")
+
+data_long <- gather(geno_summary2, NGRDV, value, X90:X152, factor_key = TRUE)
+
+#data_long$NGRDV <- substr(data_long$NGRDV, 2, nchar(data_long$NGRDV))
+
+data_long$NGRDV <- as.numeric(data_long$NGRDV)
+data_long$NGRDV[data_long$NGRDV == "1"]<- "90"
+data_long$NGRDV[data_long$NGRDV == "2"]<- "96"
+data_long$NGRDV[data_long$NGRDV == "3"]<- "103"
+data_long$NGRDV[data_long$NGRDV == "4"]<- "110"
+data_long$NGRDV[data_long$NGRDV == "5"]<- "116"
+data_long$NGRDV[data_long$NGRDV == "6"]<- "124"
+data_long$NGRDV[data_long$NGRDV == "7"]<- "131"
+data_long$NGRDV[data_long$NGRDV == "8"]<- "140"
+data_long$NGRDV[data_long$NGRDV == "9"]<- "152"
+
+data_long$NGRDV <- as.numeric(data_long$NGRDV)
+
+ggplot(data=data_long, aes(x=NGRDV, y=value, color=Genotype)) +
+   geom_line()+
+  scale_color_brewer(palette="Paired")+
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+```{r, echo = FALSE}
+#Data long 2
+
+data_long2 <- data_long
+df_long2 <- subset(data_long, grepl("^D", Genotype))
+
+ggplot(data=df_long2, aes(x=NGRDV, y=value, color=Genotype)) +
+  geom_line()+
+  theme_minimal()+
+  labs(x = "Days after planting", y = "NGRDI Index Value", title = "NGRDI post anthesis for Checks")+
+  theme(axis.text = element_text(size = 12))+
+  theme(axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14),
+        plot.title = element_text(hjust = 0.5))
+```
+
+```{r include = FALSE}
+  scale_fill_identity()
+
+
+
+#Add stay green
+  df_long2$staygreen = (df_long2$value - 0.0272797)/0.0005933
+```
+
+
+```{r, echo = FALSE}
+#-------------
+  # Black Layer
+  
+BL_Master <- read.csv('/Users/amparodaza/Library/CloudStorage/OneDrive-UW-Madison/Doctorado/Senescence project/RGB_Data/All_results/BL_Master.csv')
+```
+
+
+##### Fit model with RM for each Genotype and days form planting to Black layer
+
+```{r}
+  # Create scatterplot with trendline and R-squared
+model <- lm(Days_Planting_to_BL ~ Average.of.RM, data = BL_Master)
+rsquared <- summary(model)$r.squared
+  
+```
+
+```{r, echo = FALSE}
+ggplot(BL_Master, aes(x = Days_Planting_to_BL, y = Average.of.RM)) +
+    geom_point(position = position_jitter(width = 0.15, height = 0.15), size = 1) +
+    geom_smooth(method = "lm", se = FALSE, color = "blue") +
+    labs(x = "Days from Planting to Black Layer", y = "RM", 
+         title = "Days to Blacklayer vs RM",
+         subtitle = paste("r = ","0.46")) +
+    theme_minimal()+
+    theme(plot.title = element_text(hjust = 0.5))+
+    theme(axis.title = element_text(size = 16),
+          axis.text = element_text(size = 16))
+
+subset_commercial <- subset(BL_Master, 
+                            Commercial == "YES")
+```
+
+##### Fit the model Average Relative Maturity for each comercial genotype and Days from planting to Black Layer
+
+```{r}
+model <- lm(Days_Planting_to_BL ~ Average.of.RM, data = subset_commercial)
+rsquared <- summary(model)$r.squared
+
+```
+
+```{r, echo = FALSE}
+
+
+ggplot(subset_commercial, aes(x = Days_Planting_to_BL, y = Average.of.RM, color=Genotype)) +
+  geom_point(position = position_jitter(width = 0.15, height = 0.15), size = 1) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(x = "Days from Planting to Black Layer", y = "RM", 
+       title = "Days to Blacklayer vs RM",
+       subtitle = paste("r = ","0.8")) +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16))
+```
+
+#---------------
+
+##### Fit the model Average Relative Maturity for each comercial genotype and Days from planting to 50% pollen
+
+```{r}
+model <- lm(Days_Planting_to_Pollen ~ Average.of.RM, data = subset_commercial)
+rsquared <- summary(model)$r.squared
+```
+
+```{r, echo = FALSE}
+ggplot(subset_commercial, aes(x = Days_Planting_to_Pollen, y = Average.of.RM, color=Genotype)) +
+  geom_point(position = position_jitter(width = 0.15, height = 0.15), size = 1) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(x = "Days from Planting Pollen", y = "RM", 
+       title = "Days from planting to Pollen vs RM",
+       subtitle = paste("r = ","0.95")) +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16))
+```
+
+
+##### Fit model Average Relative Maturity for each genotype and Days from planting to Pollen
+
+```{r}
+model <- lm(Average.of.RM ~ Days_Planting_to_Pollen, data = BL_Master)
+rsquared <- summary(model)$r.squared
+```
+
+```{r, echo = FALSE}
+ggplot(BL_Master, aes(x = Days_Planting_to_Pollen, y = Average.of.RM)) +
+  geom_point(position = position_jitter(width = 0.15, height = 0.15), size = 1) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(x = "Days Planting to pollen", y = "RM", 
+       title = "Days from planting to Pollen to vs RM",
+       subtitle = paste("r = ","0.6")) +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16))
+```
+
+
+##### Moisture
+```{r, echo = FALSE}
+MST <- read.csv('/Users/amparodaza/Library/CloudStorage/OneDrive-UW-Madison/Doctorado/Senescence project/RGB_Data/All_results/Final.csv')
+```
+
+##### Fit the model with CIVE Index and Moisture
+```{r}
+## CIVE use to get plant biomass and distinguish plants from soil and residue backgrounds
+# Create scatterplot with trendline and R-squared
+model <- lm(Moisture ~ CIVE, data = MST)
+rsquared <- summary(model)$r.squared
+```
+
+```{r, echo = FALSE}
+ggplot(MST, aes(x = Moisture, y = CIVE)) +
+  geom_point(position = position_jitter(width = 0.15, height = 0.15), size = 1) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(x = "Kernel Moisture", y = "CIVE Value", 
+       title = "CIVE vs Kernel Moisture %",
+       subtitle = paste("r = ","0.43")) +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16))
+
+```
+
+######-----------------
+
+##### Yield calculation and Heatmap
+
+$Adj \space weight \space (lb) = \frac{(Weight \space (lb)-(Weight \space (lb)*Moisture)}{0.845}$
+
+$Yield \space (bu/ac) = Adj \space Weight \space (lb) *\frac{1 \space bushel}{1 \space acre}*\frac{43560 \space ft^2}{1 \space acre}*\frac{1}{22.5 \space ft * 2.5 \space ft *2}$
+
+
+
+```{r, echo = FALSE}
+
+BL_Master <- BL_Master %>%
+  group_by(Genotype) %>%
+  mutate(GenotypeNumber = cur_group_id()) %>%  # Creates a unique ID for each Genotype
+  ungroup()
+
+midpoint <- 11
+
+ggplot(BL_Master, aes(x = Row, y = Range, fill = Yield)) + 
+  geom_tile(color = "black") + 
+  geom_text(aes(label = paste(GenotypeNumber, "=", round(Yield))), color = "white", size = 3) +
+  scale_fill_gradient(low = "red", high = "green") +
+  labs(x = "Row", y = "Range", fill = "Yield") +
+  geom_hline(yintercept = midpoint + 0.5, color = "black", linewidth = 1) +
+  theme_minimal() +
+  scale_x_continuous(breaks = seq(min(BL_Master$Row), max(BL_Master$Row), by = 1)) +
+  theme(axis.text.x = element_text(hjust = 1),  # Rotate x-axis labels
+        panel.grid.major = element_blank(), # Remove grid lines
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank())
+```
